@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttleverse-gateway
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuttleverse-gateway
+  template:
+    metadata:
+      labels:
+        app: shuttleverse-gateway
+    spec:
+      containers:
+        - name: shuttleverse-gateway
+          image: docker-user/shuttleverse-gateway:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: EUREKA_SERVER_DEFAULT_ZONE
+              value: "http://eureka-server:8761/eureka/"
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: google-client-id
+                  key: GOOGLE_CLIENT_ID
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: google-client-secret
+                  key: GOOGLE_CLIENT_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shuttleverse-gateway
+  namespace: default
+spec:
+  selector:
+    app: shuttleverse-gateway
+  ports:
+    - port: 8082
+      targetPort: 8082
+  type: ClusterIP

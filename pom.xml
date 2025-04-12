@@ -4,6 +4,7 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <artifactId>shuttleverse-gateway</artifactId>
   <build>
+    <finalName>shuttleverse-gateway</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -31,6 +32,7 @@
       </plugin>
     </plugins>
   </build>
+
   <dependencies>
     <dependency>
       <artifactId>spring-boot-starter-oauth2-client</artifactId>
@@ -67,17 +69,21 @@
       <groupId>org.projectlombok</groupId>
       <optional>true</optional>
     </dependency>
+
     <dependency>
       <artifactId>spring-boot-starter-test</artifactId>
       <groupId>org.springframework.boot</groupId>
       <scope>test</scope>
     </dependency>
+
     <dependency>
       <artifactId>spring-security-test</artifactId>
       <groupId>org.springframework.security</groupId>
       <scope>test</scope>
     </dependency>
+
   </dependencies>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -89,6 +95,7 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
   <description>shuttleverse-gateway</description>
   <developers>
     <developer/>
