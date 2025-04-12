@@ -29,6 +29,11 @@ spec:
                 secretKeyRef:
                   name: google-client-secret
                   key: GOOGLE_CLIENT_SECRET
+            - name: BACKEND_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: backend-base-url
+                  key: BACKEND_BASE_URL
 ---
 apiVersion: v1
 kind: Service
