@@ -19,8 +19,6 @@ spec:
           ports:
             - containerPort: 8082
           env:
-            - name: EUREKA_SERVER_DEFAULT_ZONE
-              value: "http://eureka-server:8761/eureka/"
             - name: GOOGLE_CLIENT_ID
               valueFrom:
                 secretKeyRef:
