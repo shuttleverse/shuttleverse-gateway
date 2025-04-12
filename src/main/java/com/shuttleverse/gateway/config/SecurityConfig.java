@@ -11,9 +11,6 @@ import org.springframework.security.web.server.context.WebSessionServerSecurityC
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
-  // Configure the session properties through application properties instead
-  // No custom WebSessionManager bean is needed as we'll use properties
-
   @Bean
   public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
     http

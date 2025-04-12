@@ -3,9 +3,8 @@ server:
 
 spring:
   application:
-    name: api-gateway
+    name: shuttleverse-gateway
 
-  # Redis Configuration (for rate limiting)
   data:
     redis:
       host: localhost
@@ -17,8 +16,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:your-client-id}
-            client-secret: ${GOOGLE_CLIENT_SECRET:your-client-secret}
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
             redirect-uri: "http://localhost:8082/login/oauth2/code/{registrationId}"
             scope:
               - openid
@@ -28,54 +27,36 @@ spring:
   # Gateway Configuration
   cloud:
     gateway:
-      # Global filters applied to all routes
       default-filters:
         - TokenRelay
         - SaveSession
 
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
       # Route definitions
       routes:
-        - id: aggregator-service
-          uri: http://localhost:8080
+        - id: shuttleverse-aggregator
+          uri: lb://shuttleverse-aggregator
           predicates:
             - Path=/api/aggregator/**
 
-        - id: community-service
-          uri: http://localhost:8081
+        - id: shuttleverse-community
+          uri: lb://shuttleverse-community
           predicates:
             - Path=/api/community/**
 
-# Resilience4j Circuit Breaker Configuration
-resilience4j:
-  circuitbreaker:
-    instances:
-      userServiceCircuitBreaker:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        minimumNumberOfCalls: 5
-        permittedNumberOfCallsInHalfOpenState: 3
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-      orderServiceCircuitBreaker:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        minimumNumberOfCalls: 5
-        permittedNumberOfCallsInHalfOpenState: 3
-        automaticTransitionFromOpenToHalfOpenEnabled: true
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
-
-    timelimiter:
-      instances:
-        userServiceCircuitBreaker:
-          timeoutDuration: 2s
-        orderServiceCircuitBreaker:
-          timeoutDuration: 2s
-        productServiceCircuitBreaker:
-          timeoutDuration: 2s
+eureka:
+  client:
+    service-url:
+      defaultZone:
+        ${EUREKA_EUREKA_SERVER_URL:http://eureka-server:8761/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
 
 # Actuator Configuration
 management:
