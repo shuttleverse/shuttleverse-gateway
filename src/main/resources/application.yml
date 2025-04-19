@@ -7,12 +7,13 @@ spring:
 
   data:
     redis:
-      host: redis-service
+      host: localhost
       port: 6379
   session:
     redis:
       namespace: "shuttleverse:session"
       flush-mode: on-save
+    timeout: 30m
 
   # OAuth2 Configuration
   security:
@@ -23,7 +24,7 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             authorization-grant-type: authorization_code
-            redirect-uri: "${BACKEND_BASE_URL}/login/oauth2/code/{registrationId}"
+            redirect-uri: "${BACKEND_BASE_URL:http://localhost:8082}/login/oauth2/code/{registrationId}"
             scope:
               - openid
               - email
@@ -33,9 +34,7 @@ spring:
   cloud:
     gateway:
       default-filters:
-        - TokenRelay
         - SaveSession
-
       discovery:
         locator:
           enabled: true
@@ -44,7 +43,7 @@ spring:
       # Route definitions
       routes:
         - id: shuttleverse-aggregator
-          uri: lb://shuttleverse-aggregator
+          uri: http://localhost:8080
           predicates:
             - Path=/api/aggregator/**
 
