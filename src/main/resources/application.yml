@@ -7,8 +7,12 @@ spring:
 
   data:
     redis:
-      host: localhost
+      host: redis-service
       port: 6379
+  session:
+    redis:
+      namespace: "shuttleverse:session"
+      flush-mode: on-save
 
   # OAuth2 Configuration
   security:
@@ -18,6 +22,7 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
             redirect-uri: "${BACKEND_BASE_URL}/login/oauth2/code/{registrationId}"
             scope:
               - openid

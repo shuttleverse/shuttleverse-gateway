@@ -82,6 +82,16 @@
       <scope>test</scope>
     </dependency>
 
+    <dependency>
+      <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+      <groupId>org.springframework.boot</groupId>
+    </dependency>
+    
+    <dependency>
+      <artifactId>spring-session-data-redis</artifactId>
+      <groupId>org.springframework.session</groupId>
+    </dependency>
+
   </dependencies>
 
   <dependencyManagement>
