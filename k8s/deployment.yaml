@@ -20,7 +20,7 @@ spec:
             - containerPort: 8082
           env:
             - name: SPRING_DATA_REDIS_HOST
-              value: "redis-service"
+              value: "redis"
             - name: SPRING_DATA_REDIS_PORT
               value: "6379"
             - name: GOOGLE_CLIENT_ID
