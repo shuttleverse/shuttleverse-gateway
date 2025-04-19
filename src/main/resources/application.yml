@@ -7,7 +7,7 @@ spring:
 
   data:
     redis:
-      host: localhost
+      host: redis
       port: 6379
   session:
     redis:
@@ -43,7 +43,7 @@ spring:
       # Route definitions
       routes:
         - id: shuttleverse-aggregator
-          uri: http://localhost:8080
+          uri: lb://shuttleverse-aggregator
           predicates:
             - Path=/api/aggregator/**
 
