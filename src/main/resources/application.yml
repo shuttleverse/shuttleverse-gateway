@@ -7,13 +7,13 @@ spring:
 
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST}
-      port: ${SPRING_DATA_REDIS_PORT}
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
   session:
     redis:
       namespace: "shuttleverse:session"
       flush-mode: on-save
-    timeout: 30m
+    timeout: 24h
 
   # OAuth2 Configuration
   security:
@@ -51,6 +51,11 @@ spring:
           uri: lb://shuttleverse-community
           predicates:
             - Path=/api/community/**
+  profiles:
+    default: dev
+
+jwt:
+  secret: ${JWT_SECRET_KEY}
 
 eureka:
   client:
