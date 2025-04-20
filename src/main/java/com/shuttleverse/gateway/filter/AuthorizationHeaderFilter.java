@@ -1,19 +1,25 @@
 package com.shuttleverse.gateway.filter;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
-import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
-import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebSession;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -21,59 +27,104 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
 
-  private final ReactiveOAuth2AuthorizedClientManager authorizedClientManager;
+  private final JwtEncoder jwtEncoder;
+  private final JwtDecoder jwtDecoder;
+  private final String issuerUrl = "https://shuttleverse.co";
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-    return exchange.getPrincipal()
-        .filter(principal -> principal instanceof OAuth2AuthenticationToken)
-        .cast(OAuth2AuthenticationToken.class)
-        .flatMap(this::getTokens)
-        .map(tokens -> withBearerAuth(exchange, tokens.get("idToken")))
-        .defaultIfEmpty(exchange)
-        .flatMap(chain::filter);
+    return exchange.getSession()
+        .flatMap(session -> {
+          if (session.getAttribute("SPRING_SECURITY_CONTEXT") != null) {
+            return getOrCreateInternalToken(session)
+                .map(token -> withBearerAuth(exchange, token))
+                .flatMap(chain::filter);
+          }
+          return chain.filter(exchange);
+        });
   }
 
-  private Mono<Map<String, String>> getTokens(OAuth2AuthenticationToken oauthToken) {
-    String clientRegistrationId = oauthToken.getAuthorizedClientRegistrationId();
+  private Mono<String> getOrCreateInternalToken(WebSession session) {
+    String existingToken = session.getAttribute("INTERNAL_TOKEN");
+    Long expiryTime = session.getAttribute("INTERNAL_TOKEN_EXPIRY");
+    Instant now = Instant.now();
 
-    // Check if ID token can be retrieved directly from the authentication
-    if (oauthToken.getPrincipal() instanceof OidcUser oidcUser) {
-      String idToken = oidcUser.getIdToken().getTokenValue();
-
-      Map<String, String> tokens = new HashMap<>();
-      tokens.put("idToken", idToken);
-
-      return Mono.just(tokens);
+    // If token exists and isn't near expiration, reuse it
+    if (existingToken != null && expiryTime != null
+        && now.plusSeconds(600).isBefore(Instant.ofEpochMilli(expiryTime))) {
+      return Mono.just(existingToken);
     }
 
-    // Fallback to getting tokens via authorized client manager
-    return authorizedClientManager
-        .authorize(OAuth2AuthorizeRequest.withClientRegistrationId(clientRegistrationId)
-            .principal(oauthToken)
-            .build())
-        .flatMap(authorizedClient -> {
-          Map<String, String> tokens = new HashMap<>();
+    return createNewInternalToken(session);
+  }
 
-          // cast to get the ID token
-          if (oauthToken.getPrincipal() instanceof OidcUser oidcUser) {
-            tokens.put("idToken", oidcUser.getIdToken().getTokenValue());
-          }
+  private Mono<String> createNewInternalToken(WebSession session) {
+    SecurityContext securityContext = session.getAttribute("SPRING_SECURITY_CONTEXT");
+    if (securityContext == null || securityContext.getAuthentication() == null) {
+      return Mono.empty();
+    }
 
-          return Mono.just(tokens);
-        })
-        .doOnError(error -> log.error("Error retrieving tokens", error));
+    Authentication auth = securityContext.getAuthentication();
+    if (!(auth.getPrincipal() instanceof OidcUser oidcUser)) {
+      return Mono.empty();
+    }
+
+    String userId = oidcUser.getSubject();
+
+    Instant now = Instant.now();
+    Instant expiry = now.plusSeconds(3600);
+
+    JwtClaimsSet claims = JwtClaimsSet.builder()
+        .issuer(this.issuerUrl)
+        .subject(userId)
+        .issuedAt(now)
+        .expiresAt(expiry)
+        .claim("s_id", session.getId())
+        .claim("email", oidcUser.getEmail())
+        .claim("name", oidcUser.getFullName())
+        .build();
+
+    JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
+    String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+
+    // Store in session
+    session.getAttributes().put("INTERNAL_TOKEN", token);
+    session.getAttributes().put("INTERNAL_TOKEN_EXPIRY", expiry.toEpochMilli());
+
+    return Mono.just(token);
+  }
+
+  private boolean isTokenValid(String token) {
+    try {
+      Jwt jwt = jwtDecoder.decode(token);
+
+      Instant expiration = jwt.getExpiresAt();
+      if (expiration != null && expiration.isBefore(Instant.now())) {
+        return false;
+      }
+
+      String issuer = jwt.getIssuer().toString();
+      return this.issuerUrl.equals(issuer);
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   private ServerWebExchange withBearerAuth(ServerWebExchange exchange, String token) {
+    if (!isTokenValid(token)) {
+      return exchange;
+    }
+
     return exchange.mutate()
-        .request(
-            r -> r.headers(headers -> headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token)))
+        .request(r -> r.headers(headers -> {
+          headers.remove(HttpHeaders.AUTHORIZATION);
+          headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }))
         .build();
   }
 
   @Override
   public int getOrder() {
-    return Ordered.HIGHEST_PRECEDENCE;
+    return Ordered.HIGHEST_PRECEDENCE + 10;
   }
 }

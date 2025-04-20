@@ -1,0 +1,30 @@
+spring:
+  cloud:
+    gateway:
+      default-filters:
+        - SaveSession
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      # Route definitions
+      routes:
+        - id: shuttleverse-aggregator
+          uri: http://localhost:8080
+          predicates:
+            - Path=/api/aggregator/**
+
+        - id: shuttleverse-community
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/community/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: "http://localhost:8761/eureka/"
+    register-with-eureka: false
+    fetch-registry: false
+  instance:
+    prefer-ip-address: false

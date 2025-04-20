@@ -37,8 +37,8 @@ public class SessionConfig {
   @Bean
   public WebSessionIdResolver webSessionIdResolver() {
     CookieWebSessionIdResolver resolver = new CookieWebSessionIdResolver();
-    resolver.setCookieName("GATEWAY_SESSION");
-    resolver.setCookieMaxAge(Duration.ofMinutes(30));
+    resolver.setCookieName("SHUTTLEVERSE_SESSION");
+    resolver.setCookieMaxAge(Duration.ofDays(1));
     resolver.addCookieInitializer(responseCookieBuilder ->
         responseCookieBuilder
             .path("/")
