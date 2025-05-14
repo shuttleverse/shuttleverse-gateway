@@ -1,14 +1,14 @@
 package com.shuttleverse.gateway.controller;
 
 import java.net.URI;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,34 +16,57 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
 
   @GetMapping("/login")
   public Mono<Void> login(ServerWebExchange exchange) {
-    return Mono.fromRunnable(() -> {
-      ServerHttpResponse response = exchange.getResponse();
-      response.setStatusCode(HttpStatus.FOUND);
-      response.getHeaders().setLocation(URI.create("/oauth2/authorization/google"));
-    });
+    return exchange.getSession()
+        .flatMap(session -> {
+          Map<String, Object> attributes = session.getAttributes();
+
+          if (attributes.containsKey("SPRING_SECURITY_CONTEXT")) {
+            SecurityContext securityContext =
+                (SecurityContext) attributes.get("SPRING_SECURITY_CONTEXT");
+            Authentication auth = securityContext.getAuthentication();
+
+            if (auth != null && auth.isAuthenticated()
+                && !(auth instanceof AnonymousAuthenticationToken)) {
+              ServerHttpResponse response = exchange.getResponse();
+              response.setStatusCode(HttpStatus.FOUND);
+              response.getHeaders().setLocation(URI.create("http://localhost:5173/home"));
+              return Mono.empty();
+            }
+          }
+
+          ServerHttpResponse response = exchange.getResponse();
+          response.setStatusCode(HttpStatus.FOUND);
+          response.getHeaders().setLocation(URI.create("/oauth2/authorization/google"));
+          return Mono.empty();
+        });
   }
 
-  @GetMapping("/user")
-  public Mono<Map<String, Object>> getUserInfo(ServerWebExchange exchange) {
-    return exchange.getPrincipal()
-        .filter(principal -> principal instanceof OAuth2AuthenticationToken)
-        .cast(OAuth2AuthenticationToken.class)
-        .map(token -> {
-          if (token.getPrincipal() instanceof OidcUser oidcUser) {
-            Map<String, Object> userInfo = new HashMap<>();
-            userInfo.put("id", oidcUser.getSubject());
-            userInfo.put("email", oidcUser.getEmail());
-            userInfo.put("name", oidcUser.getFullName());
-            return userInfo;
+  @GetMapping("/status")
+  public Mono<Map<String, Boolean>> getUserInfo(ServerWebExchange exchange) {
+    return exchange.getSession()
+        .map(session -> {
+          Map<String, Object> attributes = session.getAttributes();
+
+          if (attributes.containsKey("SPRING_SECURITY_CONTEXT")) {
+            SecurityContext securityContext =
+                (SecurityContext) attributes.get("SPRING_SECURITY_CONTEXT");
+            Authentication auth = securityContext.getAuthentication();
+
+            if (auth != null && auth.isAuthenticated()
+                && !(auth instanceof AnonymousAuthenticationToken)) {
+              return Map.of("authenticated", true);
+            }
           }
-          return Collections.<String, Object>emptyMap();
+          return Map.of("authenticated", false);
         })
-        .switchIfEmpty(Mono.just(Collections.emptyMap()));
+        .defaultIfEmpty(Map.of("authenticated", false))
+        .onErrorResume(e -> Mono.just(Map.of("authenticated", false)));
   }
 }

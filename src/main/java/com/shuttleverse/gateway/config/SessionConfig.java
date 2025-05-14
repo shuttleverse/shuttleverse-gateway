@@ -43,7 +43,7 @@ public class SessionConfig {
         responseCookieBuilder
             .path("/")
             .httpOnly(true)
-            .secure(true)
+            .secure(false)
             .sameSite("Lax")
     );
     return resolver;
