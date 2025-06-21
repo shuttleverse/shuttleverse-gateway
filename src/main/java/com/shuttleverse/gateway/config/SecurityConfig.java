@@ -57,10 +57,9 @@ public class SecurityConfig {
             .anyExchange().authenticated())
         .oauth2Login(oauth2 -> oauth2
             .authenticationFailureHandler((exchange, exception) -> Mono.fromRunnable(() -> {
-                  logger.warn(exception.getMessage());
-                  exchange.getExchange().getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                }
-            ))
+              logger.warn(exception.getMessage());
+              exchange.getExchange().getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+            }))
             .authenticationSuccessHandler((exchange, authentication) -> {
               ServerHttpResponse response = exchange.getExchange().getResponse();
               response.setStatusCode(HttpStatus.FOUND);

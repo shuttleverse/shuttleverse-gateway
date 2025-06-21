@@ -1,16 +1,16 @@
 package com.shuttleverse.gateway.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuttleverse.gateway.service.ProfileService;
 import java.time.Duration;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
-import org.springframework.data.redis.core.ReactiveRedisOperations;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.session.data.redis.config.annotation.web.server.EnableRedisWebSession;
 import org.springframework.web.server.session.CookieWebSessionIdResolver;
 import org.springframework.web.server.session.WebSessionIdResolver;
@@ -18,25 +18,25 @@ import org.springframework.web.server.session.WebSessionIdResolver;
 @Configuration
 @RequiredArgsConstructor
 @EnableRedisWebSession()
-public class SessionConfig {
+public class SessionConfig implements BeanClassLoaderAware {
 
   private final ProfileService profileService;
+  private ClassLoader loader;
 
   @Bean
-  public ReactiveRedisOperations<String, Object> redisOperations(
-      ReactiveRedisConnectionFactory factory) {
-    Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(
-        Object.class);
+  public RedisSerializer<Object> springSessionDefaultRedisSerializer() {
+    return new GenericJackson2JsonRedisSerializer(objectMapper());
+  }
 
-    RedisSerializationContext.RedisSerializationContextBuilder<String, Object> builder =
-        RedisSerializationContext.newSerializationContext(new StringRedisSerializer());
+  private ObjectMapper objectMapper() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.registerModules(SecurityJackson2Modules.getModules(this.loader));
+    return mapper;
+  }
 
-    RedisSerializationContext<String, Object> context = builder
-        .value(serializer)
-        .hashValue(serializer)
-        .build();
-
-    return new ReactiveRedisTemplate<>(factory, context);
+  @Override
+  public void setBeanClassLoader(@NonNull ClassLoader classLoader) {
+    this.loader = classLoader;
   }
 
   @Bean
@@ -45,14 +45,12 @@ public class SessionConfig {
     CookieWebSessionIdResolver resolver = new CookieWebSessionIdResolver();
     resolver.setCookieName("SHUTTLEVERSE_SESSION");
     resolver.setCookieMaxAge(Duration.ofDays(1));
-    resolver.addCookieInitializer(responseCookieBuilder ->
-        responseCookieBuilder
-            .path("/")
-            .httpOnly(true)
-            .secure(isProd)
-            .domain(isProd ? ".shuttleverse.co" : "localhost")
-            .sameSite(isProd ? "Strict" : "Lax")
-    );
+    resolver.addCookieInitializer(responseCookieBuilder -> responseCookieBuilder
+        .path("/")
+        .httpOnly(true)
+        .secure(isProd)
+        .domain(isProd ? ".shuttleverse.co" : "localhost")
+        .sameSite("Lax"));
     return resolver;
   }
 }
