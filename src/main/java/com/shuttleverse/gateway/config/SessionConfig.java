@@ -50,6 +50,7 @@ public class SessionConfig {
             .path("/")
             .httpOnly(true)
             .secure(isProd)
+            .domain(isProd ? ".shuttleverse.co" : "localhost")
             .sameSite(isProd ? "Strict" : "Lax")
     );
     return resolver;

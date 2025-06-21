@@ -56,8 +56,7 @@ public class SecurityConfig {
             .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .anyExchange().authenticated())
         .oauth2Login(oauth2 -> oauth2
-            .authenticationFailureHandler((exchange,
-                exception) -> Mono.fromRunnable(() -> {
+            .authenticationFailureHandler((exchange, exception) -> Mono.fromRunnable(() -> {
                   logger.warn(exception.getMessage());
                   exchange.getExchange().getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                 }
