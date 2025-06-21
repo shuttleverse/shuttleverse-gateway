@@ -1,6 +1,5 @@
 package com.shuttleverse.gateway.controller;
 
-import com.shuttleverse.gateway.service.ProfileService;
 import java.net.URI;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -19,8 +18,6 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
-
-  private final ProfileService profileService;
 
   @GetMapping("/login")
   public Mono<Void> login(ServerWebExchange exchange) {

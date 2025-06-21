@@ -6,6 +6,8 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -25,6 +27,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+  private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
   private final ProfileService profileService;
 
   @Bean
@@ -54,8 +57,11 @@ public class SecurityConfig {
             .anyExchange().authenticated())
         .oauth2Login(oauth2 -> oauth2
             .authenticationFailureHandler((exchange,
-                exception) -> Mono.fromRunnable(() -> exchange.getExchange().getResponse()
-                .setStatusCode(HttpStatus.UNAUTHORIZED)))
+                exception) -> Mono.fromRunnable(() -> {
+                  logger.warn(exception.getMessage());
+                  exchange.getExchange().getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                }
+            ))
             .authenticationSuccessHandler((exchange, authentication) -> {
               ServerHttpResponse response = exchange.getExchange().getResponse();
               response.setStatusCode(HttpStatus.FOUND);
@@ -68,7 +74,10 @@ public class SecurityConfig {
             .authenticationEntryPoint((exchange, exception) -> {
               exchange.getRequest().getMethod();
               return Mono.fromRunnable(
-                  () -> exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED));
+                  () -> {
+                    logger.warn(exception.getMessage());
+                    exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+                  });
             }))
         .securityContextRepository(new WebSessionServerSecurityContextRepository())
         .logout(logout -> logout
