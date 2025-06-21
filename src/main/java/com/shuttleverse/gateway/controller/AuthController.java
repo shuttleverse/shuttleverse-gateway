@@ -1,5 +1,6 @@
 package com.shuttleverse.gateway.controller;
 
+import com.shuttleverse.gateway.service.ProfileService;
 import java.net.URI;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -8,7 +9,6 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,8 +18,9 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "http://localhost:5173")
 public class AuthController {
+
+  private final ProfileService profileService;
 
   @GetMapping("/login")
   public Mono<Void> login(ServerWebExchange exchange) {
@@ -36,7 +37,6 @@ public class AuthController {
                 && !(auth instanceof AnonymousAuthenticationToken)) {
               ServerHttpResponse response = exchange.getResponse();
               response.setStatusCode(HttpStatus.FOUND);
-              response.getHeaders().setLocation(URI.create("http://localhost:5173/home"));
               return Mono.empty();
             }
           }

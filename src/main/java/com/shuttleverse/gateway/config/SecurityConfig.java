@@ -1,9 +1,11 @@
 package com.shuttleverse.gateway.config;
 
+import com.shuttleverse.gateway.service.ProfileService;
 import jakarta.ws.rs.HttpMethod;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -20,12 +22,15 @@ import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+  private final ProfileService profileService;
 
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+    configuration.setAllowedOrigins(List.of(profileService.getClientUrl()));
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("*"));
     configuration.setExposedHeaders(List.of("Authorization"));
@@ -50,11 +55,12 @@ public class SecurityConfig {
         .oauth2Login(oauth2 -> oauth2
             .authenticationFailureHandler((exchange,
                 exception) -> Mono.fromRunnable(() -> exchange.getExchange().getResponse()
-                    .setStatusCode(HttpStatus.UNAUTHORIZED)))
+                .setStatusCode(HttpStatus.UNAUTHORIZED)))
             .authenticationSuccessHandler((exchange, authentication) -> {
               ServerHttpResponse response = exchange.getExchange().getResponse();
               response.setStatusCode(HttpStatus.FOUND);
-              response.getHeaders().setLocation(URI.create("http://localhost:5173/home"));
+              response.getHeaders()
+                  .setLocation(URI.create(profileService.getClientUrl() + "/home"));
               return Mono.empty();
             }))
         .oauth2Client(Customizer.withDefaults())

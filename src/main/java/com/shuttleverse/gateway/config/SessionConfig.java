@@ -1,6 +1,8 @@
 package com.shuttleverse.gateway.config;
 
+import com.shuttleverse.gateway.service.ProfileService;
 import java.time.Duration;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
@@ -14,8 +16,11 @@ import org.springframework.web.server.session.CookieWebSessionIdResolver;
 import org.springframework.web.server.session.WebSessionIdResolver;
 
 @Configuration
+@RequiredArgsConstructor
 @EnableRedisWebSession()
 public class SessionConfig {
+
+  private final ProfileService profileService;
 
   @Bean
   public ReactiveRedisOperations<String, Object> redisOperations(
@@ -36,6 +41,7 @@ public class SessionConfig {
 
   @Bean
   public WebSessionIdResolver webSessionIdResolver() {
+    Boolean isProd = profileService.isProduction();
     CookieWebSessionIdResolver resolver = new CookieWebSessionIdResolver();
     resolver.setCookieName("SHUTTLEVERSE_SESSION");
     resolver.setCookieMaxAge(Duration.ofDays(1));
@@ -43,8 +49,8 @@ public class SessionConfig {
         responseCookieBuilder
             .path("/")
             .httpOnly(true)
-            .secure(false)
-            .sameSite("Lax")
+            .secure(isProd)
+            .sameSite(isProd ? "Strict" : "Lax")
     );
     return resolver;
   }
