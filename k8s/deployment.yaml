@@ -43,6 +43,11 @@ spec:
                 secretKeyRef:
                   name: backend-base-url
                   key: BACKEND_BASE_URL
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-password
+                  key: REDIS_PASSWORD
 ---
 apiVersion: v1
 kind: Service
