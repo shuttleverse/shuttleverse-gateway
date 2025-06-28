@@ -65,7 +65,7 @@ public class SecurityConfig {
               response.setStatusCode(HttpStatus.FOUND);
               response.getHeaders()
                   .setLocation(URI.create(profileService.getClientUrl() + "/home"));
-              return Mono.empty();
+              return response.setComplete();
             }))
         .oauth2Client(Customizer.withDefaults())
         .exceptionHandling(exceptions -> exceptions
