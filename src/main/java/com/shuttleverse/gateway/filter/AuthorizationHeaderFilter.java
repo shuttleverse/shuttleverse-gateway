@@ -33,10 +33,14 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    log.debug("AuthorizationHeaderFilter processing request: {} {}",
+        exchange.getRequest().getMethod(), exchange.getRequest().getURI());
+
     return exchange.getSession()
         .flatMap(session -> {
           if (session.getAttribute("SPRING_SECURITY_CONTEXT") != null) {
             return getOrCreateInternalToken(session)
+                .doOnNext(token -> log.debug("Internal token retrieved/created successfully"))
                 .map(token -> withBearerAuth(exchange, token))
                 .flatMap(chain::filter);
           }
@@ -55,6 +59,7 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
       return Mono.just(existingToken);
     }
 
+    log.debug("Creating new internal token");
     return createNewInternalToken(session);
   }
 
@@ -90,6 +95,9 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
     // Store in session
     session.getAttributes().put("INTERNAL_TOKEN", token);
     session.getAttributes().put("INTERNAL_TOKEN_EXPIRY", expiry.toEpochMilli());
+
+    log.debug("Internal token created and stored in session - Token length: {}, Expires at: {}",
+        token.length(), expiry);
 
     return Mono.just(token);
   }
