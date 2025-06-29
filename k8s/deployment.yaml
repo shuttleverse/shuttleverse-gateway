@@ -48,6 +48,8 @@ spec:
                 secretKeyRef:
                   name: redis-password
                   key: REDIS_PASSWORD
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Djavax.net.debug=ssl,handshake"
 ---
 apiVersion: v1
 kind: Service
