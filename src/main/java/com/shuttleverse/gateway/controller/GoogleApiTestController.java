@@ -3,18 +3,27 @@ package com.shuttleverse.gateway.controller;
 import java.time.Duration;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.HttpProtocol;
+import reactor.netty.http.client.HttpClient;
 
 @RestController
 @RequestMapping("/test")
 public class GoogleApiTestController {
 
+  private final HttpClient httpClient = HttpClient.create()
+      .protocol(HttpProtocol.HTTP11)
+      .wiretap(true)
+      .responseTimeout(Duration.ofSeconds(10));
+
   private final WebClient webClient = WebClient.builder()
+      .clientConnector(new ReactorClientHttpConnector(httpClient))
       .baseUrl("https://www.googleapis.com")
       .build();
 
@@ -35,5 +44,15 @@ public class GoogleApiTestController {
         .onErrorResume(e -> Mono.just(
             ResponseEntity.internalServerError().body("Failed: " + e.getMessage())
         ));
+  }
+
+  @GetMapping("/any")
+  public Mono<String> testAnyEgress() {
+    return webClient.get()
+        .uri("https://api.github.com")  // replace with any public API
+        .retrieve()
+        .bodyToMono(String.class)
+        .timeout(Duration.ofSeconds(10))  // overall timeout
+        .doOnError(err -> System.err.println("Error calling external API: " + err.getMessage()));
   }
 }
