@@ -1,6 +1,10 @@
 package com.shuttleverse.gateway.controller;
 
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import java.time.Duration;
+import javax.net.ssl.SSLException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -17,7 +21,11 @@ import reactor.netty.http.client.HttpClient;
 @RequestMapping("/test")
 public class GoogleApiTestController {
 
+  private final SslContext sslContextBuilder = SslContextBuilder.forClient()
+      .trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+
   private final HttpClient httpClient = HttpClient.create()
+      .secure(sslContextSpec -> sslContextSpec.sslContext(sslContextBuilder))
       .protocol(HttpProtocol.HTTP11)
       .wiretap(true)
       .responseTimeout(Duration.ofSeconds(10));
@@ -26,6 +34,10 @@ public class GoogleApiTestController {
       .clientConnector(new ReactorClientHttpConnector(httpClient))
       .baseUrl("https://www.googleapis.com")
       .build();
+
+  public GoogleApiTestController() throws SSLException {
+
+  }
 
   @GetMapping("/google-token")
   public Mono<ResponseEntity<String>> testGoogleTokenExchange() {
