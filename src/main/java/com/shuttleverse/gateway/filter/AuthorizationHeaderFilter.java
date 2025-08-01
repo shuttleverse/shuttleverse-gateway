@@ -1,5 +1,6 @@
 package com.shuttleverse.gateway.filter;
 
+import com.shuttleverse.gateway.service.ProfileService;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,12 +31,10 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
   private final JwtEncoder jwtEncoder;
   private final JwtDecoder jwtDecoder;
   private final String issuerUrl = "https://shuttleverse.co";
+  private final ProfileService profileService;
 
   @Override
   public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-    log.debug("AuthorizationHeaderFilter processing request: {} {}",
-        exchange.getRequest().getMethod(), exchange.getRequest().getURI());
-
     return exchange.getSession()
         .flatMap(session -> {
           if (session.getAttribute("SPRING_SECURITY_CONTEXT") != null) {
@@ -59,7 +58,6 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
       return Mono.just(existingToken);
     }
 
-    log.debug("Creating new internal token");
     return createNewInternalToken(session);
   }
 
@@ -70,10 +68,11 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
     }
 
     Authentication auth = securityContext.getAuthentication();
-    if (!(auth.getPrincipal() instanceof OidcUser oidcUser)) {
+    if (!(auth.getPrincipal() instanceof OidcUser) && profileService.isProduction()) {
       return Mono.empty();
     }
 
+    OidcUser oidcUser = (OidcUser) auth.getPrincipal();
     String userId = oidcUser.getSubject();
 
     Instant now = Instant.now();
@@ -92,12 +91,8 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
     JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
     String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
 
-    // Store in session
     session.getAttributes().put("INTERNAL_TOKEN", token);
     session.getAttributes().put("INTERNAL_TOKEN_EXPIRY", expiry.toEpochMilli());
-
-    log.debug("Internal token created and stored in session - Token length: {}, Expires at: {}",
-        token.length(), expiry);
 
     return Mono.just(token);
   }
