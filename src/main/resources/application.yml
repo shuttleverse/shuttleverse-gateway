@@ -1,12 +1,5 @@
 server:
   port: 8082
-logging:
-  level:
-    org:
-      springframework:
-        web.reactive.function.client.ExchangeFunctions: TRACE
-        oauth2.client.endpoint.DefaultAuthorizationCodeTokenResponseClient: DEBUG
-        security: DEBUG
 
 spring:
   application:
