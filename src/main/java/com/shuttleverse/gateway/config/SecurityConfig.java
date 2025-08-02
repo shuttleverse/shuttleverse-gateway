@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -20,6 +21,7 @@ import org.springframework.security.web.server.context.WebSessionServerSecurityC
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.server.WebSession;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -65,7 +67,7 @@ public class SecurityConfig {
               ServerHttpResponse response = exchange.getExchange().getResponse();
               response.setStatusCode(HttpStatus.FOUND);
               response.getHeaders()
-                  .setLocation(URI.create(profileService.getClientUrl() + "/home"));
+                  .setLocation(URI.create(profileService.getClientUrl() + "/onboarding"));
               return response.setComplete();
             }))
         .oauth2Client(Customizer.withDefaults())
@@ -80,10 +82,25 @@ public class SecurityConfig {
             }))
         .securityContextRepository(new WebSessionServerSecurityContextRepository())
         .logout(logout -> logout
-            .logoutUrl("/auth/logout")
+            .logoutUrl("/api/auth/logout")
             .logoutSuccessHandler((exchange, authentication) -> {
-              exchange.getExchange().getResponse().setStatusCode(HttpStatus.OK);
-              return Mono.empty();
+              var response = exchange.getExchange().getResponse();
+
+              return exchange.getExchange().getSession()
+                  .doOnNext(WebSession::invalidate)
+                  .then(Mono.fromRunnable(() -> {
+                    response.addCookie(ResponseCookie.from("SHUTTLEVERSE_SESSION", "")
+                        .path("/")
+                        .httpOnly(true)
+                        .maxAge(0)
+                        .build());
+
+                    // 3. Redirect to frontend
+                    response.setStatusCode(HttpStatus.FOUND);
+                    response.getHeaders()
+                        .setLocation(URI.create(profileService.getClientUrl() + "/home"));
+                  }))
+                  .then(response.setComplete());
             }));
 
     return http.build();
