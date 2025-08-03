@@ -98,7 +98,7 @@ public class SecurityConfig {
                     // 3. Redirect to frontend
                     response.setStatusCode(HttpStatus.FOUND);
                     response.getHeaders()
-                        .setLocation(URI.create(profileService.getClientUrl() + "/home"));
+                        .setLocation(URI.create(profileService.getClientUrl() + "/"));
                   }))
                   .then(response.setComplete());
             }));
