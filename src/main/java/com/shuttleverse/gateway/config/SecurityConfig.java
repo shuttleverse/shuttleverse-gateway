@@ -3,6 +3,7 @@ package com.shuttleverse.gateway.config;
 import com.shuttleverse.gateway.service.ProfileService;
 import jakarta.ws.rs.HttpMethod;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -30,12 +31,18 @@ import reactor.core.publisher.Mono;
 public class SecurityConfig {
 
   private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+  private static final List<String> BASE_ORIGINS = List.of("https://shuttleverse.co",
+      "https://www.shuttleverse.co");
   private final ProfileService profileService;
 
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(List.of(profileService.getClientUrl()));
+    List<String> allowedOrigins = new ArrayList<>(BASE_ORIGINS);
+    if (!profileService.isProduction()) {
+      allowedOrigins.add("http://localhost:5173");
+    }
+    configuration.setAllowedOrigins(allowedOrigins);
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("*"));
     configuration.setExposedHeaders(List.of("Authorization"));
