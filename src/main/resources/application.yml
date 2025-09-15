@@ -30,6 +30,11 @@ spring:
               - openid
               - email
               - profile
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 165MB
+      max-request-size: 165MB
 
   # Gateway Configuration
   cloud:
