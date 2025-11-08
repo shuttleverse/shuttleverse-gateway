@@ -15,7 +15,7 @@ COPY . .
 ARG SPRING_PROFILE=dev
 RUN mvn clean package -Dspring.profiles.active=${SPRING_PROFILE} -DskipTests
 
-FROM --platform=linux/arm64 openjdk:17-jdk-slim
+FROM --platform=linux/arm64 eclipse-temurin:17-jdk-jammy
 
 WORKDIR /app
 
