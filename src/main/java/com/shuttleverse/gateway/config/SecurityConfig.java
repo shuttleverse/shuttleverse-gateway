@@ -38,13 +38,14 @@ public class SecurityConfig {
   @Bean
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    List<String> allowedOrigins = new ArrayList<>(BASE_ORIGINS);
+    List<String> allowedOriginPatterns = new ArrayList<>(BASE_ORIGINS);
     if (!profileService.isProduction()) {
-      allowedOrigins.add("http://localhost:5173");
+      allowedOriginPatterns.add("http://localhost:5173");
     }
-    configuration.setAllowedOrigins(allowedOrigins);
+    configuration.setAllowedOriginPatterns(allowedOriginPatterns);
     configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-    configuration.setAllowedHeaders(List.of("*"));
+    configuration.setAllowedHeaders(Arrays.asList("*", "Upgrade", "Connection", "Sec-WebSocket-Key",
+        "Sec-WebSocket-Version", "Sec-WebSocket-Protocol", "Sec-WebSocket-Extensions"));
     configuration.setExposedHeaders(List.of("Authorization"));
     configuration.setAllowCredentials(true);
     configuration.setMaxAge(3600L);
@@ -64,6 +65,7 @@ public class SecurityConfig {
             .pathMatchers("/api/auth/login", "/oauth2/**").permitAll()
             .pathMatchers("/test/**").permitAll()
             .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+            .pathMatchers("/api/connect/ws/**").authenticated()
             .anyExchange().authenticated())
         .oauth2Login(oauth2 -> oauth2
             .authenticationFailureHandler((exchange, exception) -> Mono.fromRunnable(() -> {
@@ -80,10 +82,9 @@ public class SecurityConfig {
         .oauth2Client(Customizer.withDefaults())
         .exceptionHandling(exceptions -> exceptions
             .authenticationEntryPoint((exchange, exception) -> {
-              exchange.getRequest().getMethod();
+              logger.warn(exception.getMessage());
               return Mono.fromRunnable(
                   () -> {
-                    logger.warn(exception.getMessage());
                     exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                   });
             }))

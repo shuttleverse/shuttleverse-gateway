@@ -118,12 +118,29 @@ public class AuthorizationHeaderFilter implements GlobalFilter, Ordered {
       return exchange;
     }
 
+    String userId = extractUserIdFromToken(token);
+
     return exchange.mutate()
         .request(r -> r.headers(headers -> {
           headers.remove(HttpHeaders.AUTHORIZATION);
           headers.add(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+          if (userId != null) {
+            headers.remove("X-User-Id");
+            headers.add("X-User-Id", userId);
+            log.debug("Added X-User-Id header: {}", userId);
+          }
         }))
         .build();
+  }
+
+  private String extractUserIdFromToken(String token) {
+    try {
+      Jwt jwt = jwtDecoder.decode(token);
+      return jwt.getSubject();
+    } catch (Exception e) {
+      log.warn("Failed to extract user ID from token: {}", e.getMessage());
+      return null;
+    }
   }
 
   @Override

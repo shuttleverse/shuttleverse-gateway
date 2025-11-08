@@ -57,6 +57,11 @@ spring:
           uri: lb://shuttleverse-community
           predicates:
             - Path=/api/community/**
+
+        - id: shuttleverse-connect
+          uri: lb://shuttleverse-connect
+          predicates:
+            - Path=/api/connect/**
   profiles:
     default: dev
 
