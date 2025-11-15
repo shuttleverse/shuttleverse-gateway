@@ -48,7 +48,8 @@ public class AuthController {
               ServerHttpResponse response = exchange.getResponse();
               response.setStatusCode(HttpStatus.FOUND);
               response.getHeaders()
-                  .setLocation(URI.create(profileService.getClientUrl() + "/onboarding"));
+                  .setLocation(
+                      URI.create(profileService.getClientUrl() + "/auth/callback?success=true"));
               return Mono.empty();
             }
           }

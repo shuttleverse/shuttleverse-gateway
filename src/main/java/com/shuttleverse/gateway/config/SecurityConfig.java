@@ -3,6 +3,8 @@ package com.shuttleverse.gateway.config;
 import com.shuttleverse.gateway.service.ProfileService;
 import jakarta.ws.rs.HttpMethod;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -68,15 +70,21 @@ public class SecurityConfig {
             .pathMatchers("/api/connect/ws/**").authenticated()
             .anyExchange().authenticated())
         .oauth2Login(oauth2 -> oauth2
-            .authenticationFailureHandler((exchange, exception) -> Mono.fromRunnable(() -> {
+            .authenticationFailureHandler((exchange, exception) -> {
               logger.warn(exception.getMessage());
-              exchange.getExchange().getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            }))
+              ServerHttpResponse response = exchange.getExchange().getResponse();
+              response.setStatusCode(HttpStatus.FOUND);
+              response.getHeaders()
+                  .setLocation(URI.create(profileService.getClientUrl() + "/auth/callback?error="
+                      + URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8)));
+              return response.setComplete();
+            })
             .authenticationSuccessHandler((exchange, authentication) -> {
               ServerHttpResponse response = exchange.getExchange().getResponse();
               response.setStatusCode(HttpStatus.FOUND);
               response.getHeaders()
-                  .setLocation(URI.create(profileService.getClientUrl() + "/onboarding"));
+                  .setLocation(
+                      URI.create(profileService.getClientUrl() + "/auth/callback?success=true"));
               return response.setComplete();
             }))
         .oauth2Client(Customizer.withDefaults())
